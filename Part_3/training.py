@@ -1,6 +1,4 @@
 #%matplotlib inline
-import argparse
-import os
 import random
 import torch
 import torch.nn as nn
@@ -9,11 +7,10 @@ import torch.optim as optim
 import torch.utils.data
 from torchvision import datasets
 import torchvision.transforms as transforms
-import torchvision.utils as vutils
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from IPython.display import HTML
+import pickle
+
 
 # Set random seed for reproducibility
 manualSeed = 999
@@ -125,10 +122,105 @@ generator_network = Generator(ngpu).to(device)
 # Create the Discriminator
 discriminator_network = Discriminator(ngpu).to(device)
 
-real_image = 1
-generated_image = 0
+real_label = 1
+generated_label = 0
 
 # Setup Adam optimizers for both Generator and Discriminator
 optimizerD = optim.Adam(discriminator_network.parameters(), lr=learning_rate, betas=(beta1, 0.999))
 optimizerG = optim.Adam(generator_network.parameters(), lr=learning_rate, betas=(beta1, 0.999))
 
+# Loss function
+bce_loss = nn.BCELoss()
+
+# Create batch of latent vectors
+fixed_noise = torch.randn(64, latent_size, 1, 1, device=device)
+
+
+# Training Loop
+img_list = []
+G_losses = []
+D_losses = []
+iters = 0
+
+
+for epoch in range(epochs):
+    # For each batch in the dataloader
+    for i, data in enumerate(dataloader, 0):
+        """ Update Discriminator network: maximize log(D(x)) + log(1 - D(G(z))) """
+        discriminator_network.zero_grad()
+        X = data[0].to(device)
+
+        b_size = X.size(0)
+        label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+
+        # Forward pass real batch through Discriminator
+        output = discriminator_network(X).view(-1)
+
+        # Calculate loss on all-real batch
+        discriminator_loss = bce_loss(output, label)
+        discriminator_loss.backward()
+
+        D_x = output.mean().item()
+
+        ## Train with all-fake batch
+        latent_vecs = torch.randn(b_size, latent_size, 1, 1, device=device)
+        gen_X = generator_network(latent_vecs)
+
+        label = torch.full((b_size,), generated_label, dtype=torch.float, device=device)
+
+        output = discriminator_network(gen_X.detach()).view(-1)
+
+        gen_loss = bce_loss(output, label)
+        gen_loss.backward()
+
+        D_G_z1 = output.mean().item()
+
+        # Compute error of D as sum over the fake and the real batches
+        errD = discriminator_loss + gen_loss
+
+        # Update Discriminator
+        optimizerD.step()
+
+        # (2) Update G network: maximize log(D(G(z)))
+   
+        generator_network.zero_grad()
+        label = torch.full((b_size,), real_label, dtype=torch.float, device=device) # fake labels are real for generator cost
+        output = discriminator_network(gen_X.detach()).view(-1)
+
+        # Calculate G's loss based on this output
+        gen_loss = bce_loss(output, label)
+
+        # Calculate gradients for G
+        gen_loss.backward()
+
+        D_G_z2 = output.mean().item()
+        # Update G
+        optimizerG.step()
+
+        # Output training stats
+        if i % 50 == 0:
+            print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
+                  % (epoch, epochs, i, len(dataloader),
+                     discriminator_loss.item(), gen_loss.item(), D_x, D_G_z1, D_G_z2))
+
+        # Save Losses for plotting later
+        G_losses.append(gen_loss.item())
+        D_losses.append(discriminator_loss.item())
+
+with open("models/discriminator", "w") as savefile:
+    pickle.dump(discriminator_network, savefile)
+    savefile.close
+
+with open("models/generator", "w") as savefile:
+    pickle.dump(generator_network, savefile)
+    savefile.close
+
+
+plt.figure(figsize=(10,5))
+plt.title("Generator and Discriminator Loss During Training")
+plt.plot(G_losses,label="G")
+plt.plot(D_losses,label="D")
+plt.xlabel("iterations")
+plt.ylabel("Loss")
+plt.legend()
+plt.savefig("images/lossfuncs.png")
