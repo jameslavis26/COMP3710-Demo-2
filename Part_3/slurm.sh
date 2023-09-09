@@ -9,3 +9,6 @@
 #SBATCH --gres=gpu:1
 
 conda activate condaTorch
+
+python ~/Dev/COMP3710-Demo-2/Part_3/training.py
+python ~/Dev/COMP3710-Demo-2/Part_3/eval.py
