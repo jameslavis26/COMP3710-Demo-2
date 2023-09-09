@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 
-
+print("> Start training script")
 # Set random seed for reproducibility
 manualSeed = 999
 print("Random Seed: ", manualSeed)
@@ -142,6 +142,7 @@ G_losses = []
 D_losses = []
 iters = 0
 
+print("> Start training loop")
 
 for epoch in range(epochs):
     # For each batch in the dataloader
@@ -207,13 +208,17 @@ for epoch in range(epochs):
         G_losses.append(gen_loss.item())
         D_losses.append(discriminator_loss.item())
 
+print("> Saving models")
 with open("models/discriminator", "w") as savefile:
     pickle.dump(discriminator_network, savefile)
-    savefile.close
+    savefile.close()
+    print("> Discriminator pickled to models/discriminator")
 
 with open("models/generator", "w") as savefile:
     pickle.dump(generator_network, savefile)
-    savefile.close
+    savefile.close()
+    print("> Generator pickled to models/generator")
+
 
 
 plt.figure(figsize=(10,5))
@@ -224,3 +229,5 @@ plt.xlabel("iterations")
 plt.ylabel("Loss")
 plt.legend()
 plt.savefig("images/lossfuncs.png")
+
+print("END")
