@@ -9,7 +9,7 @@ latent_size = 100
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-generatorfile = open('models/discriminator')
+generatorfile = open('/home/Student/s4501559/Dev/COMP3710-Demo-2/Part_3/models/generator')
 generator_network = pickle.load(generatorfile)
 print("> Model loaded")
 
@@ -21,5 +21,5 @@ plt.figure(figsize=(8,8))
 plt.axis("off")
 plt.title("Training Images")
 plt.imshow(np.transpose(vutils.make_grid(gen_batch[0].to(device)[:64], padding=2, normalize=True).cpu(),(1,2,0)))
-plt.savefig('images/generated.png')
+plt.savefig('/home/Student/s4501559/Dev/COMP3710-Demo-2/Part_3/images/generated.png')
 print("> Images saved to images/generated.png")
